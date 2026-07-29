@@ -11,6 +11,19 @@
    - Fullscreen and screen wake-lock attempts
    - Service worker registration
    ========================================================================== */
+document.addEventListener("DOMContentLoaded", () => {
+  const dateElement = document.getElementById("clock-date");
+  const eventList = document.getElementById("event-list");
+
+  if (dateElement) {
+    dateElement.textContent = "JavaScript file loaded";
+  }
+
+  if (eventList) {
+    eventList.innerHTML =
+      '<li class="event-list__empty">JavaScript file loaded</li>';
+  }
+});
 
 import { initializeApp } from
   "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
