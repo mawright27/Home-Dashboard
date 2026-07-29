@@ -1,6 +1,6 @@
-const CACHE_NAME = "home-dashboard-v11";
+const CACHE_NAME = "home-dashboard";
 
-const APP_FILES = [
+const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
@@ -10,26 +10,14 @@ const APP_FILES = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_FILES);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
   );
 
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    })
-  );
-
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("fetch", (event) => {
@@ -37,17 +25,32 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const requestUrl = new URL(event.request.url);
+  const isOwnSite = requestUrl.origin === self.location.origin;
+
+  // Always try GitHub first for HTML, CSS, JS, and manifest files.
+  if (isOwnSite) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, copy);
+            });
+          }
+
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+
+    return;
+  }
+
+  // External resources, such as Firebase, use normal network behavior.
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const responseCopy = response.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseCopy);
-        });
-
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
