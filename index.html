@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A0D13" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="screen-orientation" content="landscape" />
+  <meta name="description" content="Wall-mounted home dashboard: time, weather, calendar and sensor status." />
+  <title>Home Dashboard</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="dashboard" id="dashboard">
+
+    <!-- Top bar: time / date / connection status -->
+    <header class="hero">
+      <div class="hero__clock">
+        <div class="hero__time" id="clock-time">--:--</div>
+        <div class="hero__date" id="clock-date">Loading date&hellip;</div>
+      </div>
+
+      <div class="hero__status">
+        <div class="status" id="connection-status" data-state="unknown">
+          <span class="status__dot" aria-hidden="true"></span>
+          <span class="status__label" id="connection-label">Connecting&hellip;</span>
+        </div>
+        <div class="status__sync" id="last-sync">Last update: &mdash;</div>
+      </div>
+    </header>
+
+    <!-- Main content grid -->
+    <main class="grid">
+
+      <!-- Weather: 7 day -->
+      <section class="panel panel--weather" aria-label="Seven day weather forecast">
+        <h2 class="panel__title">
+          <span class="panel__title-text">Weather</span>
+          <span class="panel__title-meta" id="weather-location">&mdash;</span>
+        </h2>
+        <div class="weather-strip" id="weather-strip">
+          <!-- populated by app.js -->
+        </div>
+      </section>
+
+      <!-- Calendar events -->
+      <section class="panel panel--calendar" aria-label="Upcoming calendar events">
+        <h2 class="panel__title">
+          <span class="panel__title-text">Upcoming</span>
+        </h2>
+        <ul class="event-list" id="event-list">
+          <!-- populated by app.js -->
+        </ul>
+      </section>
+
+      <!-- Sensor cards -->
+      <section class="panel panel--sensors" aria-label="Home sensor readings">
+        <div class="sensor-cards" id="sensor-cards">
+
+          <article class="sensor-card sensor-card--pool" data-sensor="pool">
+            <div class="sensor-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 34c3 3 6 3 9 0s6-3 9 0 6 3 9 0 6-3 9 0" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M4 42c3 3 6 3 9 0s6-3 9 0 6 3 9 0 6-3 9 0" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+                <path d="M24 6c3 5 5 8.5 5 12a5 5 0 1 1-10 0c0-3.5 2-7 5-12Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="sensor-card__body">
+              <h3 class="sensor-card__label">Pool</h3>
+              <div class="sensor-card__value"><span id="pool-temp">&mdash;</span><span class="sensor-card__unit">&deg;F</span></div>
+              <div class="sensor-card__meta" id="pool-meta">&mdash;</div>
+            </div>
+          </article>
+
+          <article class="sensor-card sensor-card--indoor" data-sensor="indoor">
+            <div class="sensor-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="20" y="6" width="8" height="24" rx="4" stroke="currentColor" stroke-width="2.5"/>
+                <circle cx="24" cy="36" r="7" stroke="currentColor" stroke-width="2.5"/>
+                <line x1="24" y1="14" x2="24" y2="32" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="sensor-card__body">
+              <h3 class="sensor-card__label">Indoor</h3>
+              <div class="sensor-card__value"><span id="indoor-temp">&mdash;</span><span class="sensor-card__unit">&deg;F</span></div>
+              <div class="sensor-card__meta" id="indoor-meta">&mdash;</div>
+            </div>
+          </article>
+
+          <article class="sensor-card sensor-card--garage" data-sensor="garage">
+            <div class="sensor-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 20 24 8l18 12" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M6 20v18h36V20" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+                <line x1="6" y1="26" x2="42" y2="26" stroke="currentColor" stroke-width="2"/>
+                <line x1="6" y1="32" x2="42" y2="32" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="sensor-card__body">
+              <h3 class="sensor-card__label">Garage</h3>
+              <div class="sensor-card__value sensor-card__value--text" id="garage-status">&mdash;</div>
+              <div class="sensor-card__meta" id="garage-meta">&mdash;</div>
+            </div>
+          </article>
+
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
