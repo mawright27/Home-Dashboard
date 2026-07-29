@@ -13,7 +13,7 @@
    ========================================================================== */
 
 import { initializeApp } from
-  "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+  "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
 import {
   getAuth,
