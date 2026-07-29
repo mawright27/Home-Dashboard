@@ -1,76 +1,53 @@
-/* ==========================================================================
-   Home Dashboard — service-worker.js
-   Caches the app shell (HTML/CSS/JS/manifest/icons) so the dashboard keeps
-   rendering the last known screen if the device briefly loses network —
-   important on a wall display with no way for anyone to hit "reload".
-   ========================================================================== */
+const CACHE_NAME = "home-dashboard-v11";
 
-const CACHE_NAME = "home-dashboard-v1";
-
-const APP_SHELL = [
+const APP_FILES = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-512-maskable.png",
+  "./manifest.json"
 ];
 
-// Install: pre-cache the app shell.
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(APP_FILES);
+    })
   );
+
+  self.skipWaiting();
 });
 
-// Activate: drop any caches from a previous version of this app.
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
-        )
-      )
-      .then(() => self.clients.claim())
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    })
   );
+
+  self.clients.claim();
 });
 
-// Fetch: cache-first for the app shell, with a network-first fallback for
-// anything else (e.g. a future real weather/calendar/sensor API) so live
-// data is preferred when available but the UI never goes blank offline.
 self.addEventListener("fetch", (event) => {
-  const { request } = event;
-
-  if (request.method !== "GET") return;
-
-  const isAppShellRequest = APP_SHELL.some((path) => {
-    const url = new URL(path, self.location.href);
-    return request.url === url.href;
-  });
-
-  if (isAppShellRequest) {
-    event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request))
-    );
+  if (event.request.method !== "GET") {
     return;
   }
 
   event.respondWith(
-    fetch(request)
+    fetch(event.request)
       .then((response) => {
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        const responseCopy = response.clone();
+
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseCopy);
+        });
+
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(() => caches.match(event.request))
   );
 });
