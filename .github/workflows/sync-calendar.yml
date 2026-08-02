@@ -1,0 +1,65 @@
+name: Sync Google Calendar
+
+# Keeps households/<uid>/gcal current so the kitchen panel can stay up
+# all day without anything holding a browser session open.
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub's shared cron often runs a few minutes
+    # late, which is fine for a wall calendar.
+    - cron: '*/15 * * * *'
+
+  # Handy for testing: Actions tab → this workflow → Run workflow.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List events without writing to Firebase'
+        type: boolean
+        default: false
+
+  # Re-sync after a deploy, so a fresh panel isn't waiting on the cron.
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/sync-calendar.mjs'
+      - '.github/workflows/sync-calendar.yml'
+
+concurrency:
+  group: calendar-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sync calendar
+        env:
+          GOOGLE_CLIENT_ID:          ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET:      ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN:      ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+
+          FIREBASE_DATABASE_URL:     ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_HOUSEHOLD_ID:     ${{ secrets.FIREBASE_HOUSEHOLD_ID }}
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_SECRET:  ${{ secrets.FIREBASE_DATABASE_SECRET }}
+
+          # Optional. Comma-separated, with a matching list of accent colors.
+          CALENDAR_IDS:    ${{ vars.CALENDAR_IDS   || 'primary' }}
+          CALENDAR_TONES:  ${{ vars.CALENDAR_TONES || 'cool' }}
+          HOUSEHOLD_TZ:    ${{ vars.HOUSEHOLD_TZ   || 'America/New_York' }}
+          DAYS_BACK:       ${{ vars.DAYS_BACK      || '7' }}
+          DAYS_AHEAD:      ${{ vars.DAYS_AHEAD     || '35' }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            node scripts/sync-calendar.mjs --dry-run
+          else
+            node scripts/sync-calendar.mjs --verbose
+          fi

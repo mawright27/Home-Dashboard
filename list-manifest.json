@@ -1,0 +1,17 @@
+{
+  "name": "Shopping List",
+  "short_name": "Shopping",
+  "description": "The household shopping list, in your pocket. Syncs with the wall dashboard.",
+  "start_url": "./list.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07090D",
+  "theme_color": "#07090D",
+  "categories": ["productivity", "shopping", "lifestyle"],
+  "icons": [
+    { "src": "./icon-list-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-list-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-list-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

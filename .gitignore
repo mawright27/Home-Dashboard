@@ -1,0 +1,40 @@
+# ── Secrets ────────────────────────────────────────────────────
+# Nothing in config.js is secret today: Firebase web config and OAuth
+# web client IDs are public by design, and this repo has no server.
+# But the moment you add a Firebase database secret or a legacy token
+# for the ESP32 boards, it goes in a file matching one of these — never
+# in config.js.
+*.secret.js
+*.secret.json
+secrets/
+.env
+.env.*
+!.env.example
+
+# Never commit these. The refresh token and client secret belong in
+# GitHub repository secrets, and the service account key belongs nowhere
+# near a repo you might ever make public.
+*refresh*token*
+client_secret*.json
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
+# ── Firebase CLI ───────────────────────────────────────────────
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.firebaserc.local
+
+# ── OS / editor noise ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# ── Node, if you ever add tooling ──────────────────────────────
+node_modules/
+npm-debug.log*
+package-lock.json.bak

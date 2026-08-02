@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Shopping List</title>
+
+<meta name="theme-color" content="#07090D">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./list-manifest.json">
+<link rel="icon" href="./icon-list-192.png">
+<link rel="apple-touch-icon" href="./icon-list-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="./list.css">
+</head>
+<body>
+
+<!-- Sign-in / loading gate -->
+<div class="gate" id="gate">
+  <div class="gate__inner" id="gateInner">
+    <div class="spinner"></div>
+    <p class="gate__msg">Loading your list</p>
+  </div>
+</div>
+
+<div class="app" id="app" hidden>
+
+  <header class="bar">
+    <div class="bar__left">
+      <h1 class="bar__title">Shopping</h1>
+      <p class="bar__sub" id="count">&nbsp;</p>
+    </div>
+    <div class="bar__actions">
+      <button class="chip" id="syncChip" type="button" aria-live="polite">
+        <span class="chip__dot" id="syncDot"></span><span id="syncLabel">Synced</span>
+      </button>
+      <button class="iconbtn" id="menuBtn" type="button" aria-label="More">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="list" id="list"></main>
+
+  <!-- Sticky composer -->
+  <form class="compose" id="compose" autocomplete="off">
+    <input class="compose__name" id="newName" type="text" placeholder="Add an item" enterkeyhint="done">
+    <input class="compose__qty"  id="newQty"  type="text" placeholder="Qty" inputmode="text">
+    <button class="compose__go" id="newGo" type="submit" aria-label="Add">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+           stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </form>
+</div>
+
+<!-- Bottom sheet: menu + confirmations -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__scrim" id="sheetScrim"></div>
+  <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet__grab"></div>
+    <h2 class="sheet__title" id="sheetTitle"></h2>
+    <div class="sheet__body" id="sheetBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="./list.js"></script>
+</body>
+</html>

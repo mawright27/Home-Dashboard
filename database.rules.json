@@ -1,0 +1,76 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "households": {
+      "$hid": {
+        "//": "Owner, invited members, and paired displays can read. Only the owner writes the household as a whole.",
+        ".read": "auth != null && (auth.uid === $hid || data.child('members').child(auth.uid).exists() || data.child('devices').child(auth.uid).exists())",
+        ".write": "auth != null && auth.uid === $hid",
+
+        "grocery": {
+          "//": "This is the shared bit. Any member can add, check off, or clear.",
+          ".write": "auth != null && (auth.uid === $hid || root.child('households').child($hid).child('members').child(auth.uid).exists())"
+        },
+
+        "events": {
+          "//": "Members can add manual events too. The Google mirror stays owner-only.",
+          ".write": "auth != null && (auth.uid === $hid || root.child('households').child($hid).child('members').child(auth.uid).exists())"
+        },
+
+        "sensors": {
+          "$sensorId": {
+            ".validate": "newData.hasChild('value')"
+          }
+        },
+
+        "members": {
+          "$memberUid": {
+            "//": "Owner manages anyone. A person may add themselves with a live invite, or remove themselves any time.",
+            ".write": "auth != null && (auth.uid === $hid || (auth.uid === $memberUid && (!newData.exists() || (root.child('invites').child(newData.child('via').val()).child('hid').val() === $hid && root.child('invites').child(newData.child('via').val()).child('expiresAt').val() > now))))",
+            ".validate": "!newData.exists() || newData.hasChildren(['name', 'joinedAt', 'via'])"
+          }
+        },
+
+        "devices": {
+          "$deviceUid": {
+            ".write": "auth != null && auth.uid === $hid"
+          }
+        }
+      }
+    },
+
+    "memberIndex": {
+      "$userUid": {
+        "//": "Where this person's household lives. Readable only by them; removable by them or by the owner.",
+        ".read": "auth != null && auth.uid === $userUid",
+        ".write": "auth != null && (auth.uid === $userUid || newData.val() === auth.uid || (!newData.exists() && data.val() === auth.uid))"
+      }
+    },
+
+    "invites": {
+      "$code": {
+        "//": "Any signed-in person holding a code can look it up. Only the owner it points at can create or revoke it.",
+        ".read": "auth != null",
+        ".write": "auth != null && ((newData.exists() && newData.child('hid').val() === auth.uid) || (!newData.exists() && data.child('hid').val() === auth.uid))",
+        ".validate": "newData.hasChildren(['hid', 'createdAt', 'expiresAt'])"
+      }
+    },
+
+    "deviceIndex": {
+      "$deviceUid": {
+        ".read": "auth != null && auth.uid === $deviceUid",
+        ".write": "auth != null && (newData.val() === auth.uid || (!newData.exists() && data.val() === auth.uid))"
+      }
+    },
+
+    "pairing": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((newData.exists() && newData.child('deviceUid').val() === auth.uid) || !newData.exists())",
+        ".validate": "newData.hasChildren(['deviceUid', 'createdAt'])"
+      }
+    }
+  }
+}
