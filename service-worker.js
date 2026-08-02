@@ -9,7 +9,7 @@
    otherwise the panel will keep showing the old build.
    ══════════════════════════════════════════════════════════════ */
 
-const CACHE_VERSION = 'dash-v10';
+const CACHE_VERSION = 'dash-v11';
 const SHELL_CACHE   = `${CACHE_VERSION}-shell`;
 const DATA_CACHE    = `${CACHE_VERSION}-data`;
 
@@ -25,6 +25,7 @@ const SHELL = [
   './styles.css',
   './app.js',
   './config.js',
+  './firebase-config.js',
   './store.js',
   './calendar.js',
   './manifest.json',

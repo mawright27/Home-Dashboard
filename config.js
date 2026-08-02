@@ -1,32 +1,23 @@
-/* ══════════════════════════════════════════════════════════════
-   config.js — the only file you should need to edit
+import { firebaseConfig } from './firebase-config.js';
 
-   Leave FIREBASE_CONFIG blank and the dashboard runs in LOCAL
-   MODE: fully interactive, data saved in this browser only. Fill
-   it in and the same UI switches to Firebase + Google Sign-In.
+/* ══════════════════════════════════════════════════════════════
+   config.js — dashboard settings
+
+   Your Firebase keys are NOT here — they live in
+   firebase-config.js, which never gets overwritten by an update.
+
+   With that file blank, the dashboard runs in LOCAL MODE: fully
+   interactive, data saved in this browser only. Filled in, the
+   same UI switches to Firebase + Google Sign-In.
    ══════════════════════════════════════════════════════════════ */
 
-/* ── PASTE FROM FIREBASE HERE ───────────────────────────────────
-   Firebase Console → Project settings → Your apps → Web app →
-   "Config". Copy their whole snippet, then select the block below —
-   from the opening line through its closing brace and semicolon — and
-   paste over it. The variable name here matches the one Firebase uses,
-   so a straight copy-paste works with no editing.
-
-   Do NOT change the `export` line underneath it.
+/* ── Your Firebase keys live in firebase-config.js ──────────────
+   They are kept in a separate file on purpose: this file changes
+   whenever the dashboard gains a feature, and your credentials
+   should never be caught in the crossfire. Edit that file, not
+   this one. It is safe to commit — Firebase web config is public
+   by design.
    ───────────────────────────────────────────────────────────── */
-
-const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  databaseURL: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
-};
-
-/* ── Leave everything below alone ───────────────────────────── */
 
 export const FIREBASE_CONFIG = firebaseConfig;
 
