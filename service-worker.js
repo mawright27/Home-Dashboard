@@ -9,7 +9,7 @@
    otherwise the panel will keep showing the old build.
    ══════════════════════════════════════════════════════════════ */
 
-const CACHE_VERSION = 'dash-v11';
+const CACHE_VERSION = 'dash-v13';
 const SHELL_CACHE   = `${CACHE_VERSION}-shell`;
 const DATA_CACHE    = `${CACHE_VERSION}-data`;
 

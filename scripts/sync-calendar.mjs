@@ -152,6 +152,10 @@ function requireEnv(keys){
 
 const log = (...a) => VERBOSE && console.log(...a);
 
+/* Realtime Database keys cannot contain . $ # [ ] or /, and calendar IDs
+   are full of them. base64url gives a stable, reversible key. */
+const calKey = id => Buffer.from(String(id), 'utf8').toString('base64url');
+
 /* Shows enough of a credential to identify it, never enough to use it. */
 function fingerprint(v){
   if (!v) return 'MISSING';
@@ -264,21 +268,28 @@ const timeFmt = new Intl.DateTimeFormat('en-GB', {
   timeZone: CFG.timeZone, hour: '2-digit', minute: '2-digit', hour12: false
 });
 
-function normalize(e, tone){
-  if (e.start?.date){
-    return { date: e.start.date, time: null, title: e.summary || '(no title)', tone, src: 'gcal' };
-  }
+function normalize(e, calKeyValue){
+  const base = {
+    title: e.summary || '(no title)',
+    cal:   calKeyValue,      // which calendar it came from
+    tone:  'cool',           // the dashboard overrides this per calendar
+    src:   'gcal'
+  };
+
+  if (e.start?.date) return { ...base, date: e.start.date, time: null };
+
   const d = new Date(e.start.dateTime);
   return {
-    date:  dateFmt.format(d),          // en-CA gives YYYY-MM-DD
-    time:  timeFmt.format(d),          // en-GB h23 gives HH:MM
-    title: e.summary || '(no title)',
-    tone,
-    src:   'gcal'
+    ...base,
+    date: dateFmt.format(d),          // en-CA gives YYYY-MM-DD
+    time: timeFmt.format(d)           // en-GB h23 gives HH:MM
   };
 }
 
-async function fetchCalendar(calId, token, tone, timeMin, timeMax){
+async function fetchCalendar(cal, token, timeMin, timeMax){
+  const calId = typeof cal === 'string' ? cal : cal.id;
+  const key   = typeof cal === 'string' ? calKey(cal) : cal.key;
+
   const url = new URL(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`);
   url.search = new URLSearchParams({
@@ -305,7 +316,7 @@ async function fetchCalendar(calId, token, tone, timeMin, timeMax){
   const items = (await res.json()).items || [];
   return items
     .filter(e => e.status !== 'cancelled' && (e.start?.date || e.start?.dateTime))
-    .map(e => normalize(e, tone));
+    .map(e => normalize(e, key));
 }
 
 /* Every calendar this account can see, with a rough event count for
@@ -352,14 +363,34 @@ async function listCalendars(token){
   );
 }
 
-async function fetchAllEvents(token){
+/* The full set this account can see, in the shape the dashboard needs. */
+async function getCalendarList(token){
+  const res = await fetch(
+    'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250',
+    { headers: { Authorization: `Bearer ${token}` } });
+
+  if (!res.ok){
+    const text = await res.text().catch(() => '');
+    throw new Error(`Could not list calendars (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  return ((await res.json()).items || []).map(c => ({
+    id:      c.id,
+    key:     calKey(c.id),
+    name:    c.summary || c.id,
+    primary: Boolean(c.primary)
+  }));
+}
+
+async function fetchAllEvents(token, cals){
   const now = Date.now();
   const timeMin = new Date(now - CFG.daysBack  * 864e5).toISOString();
   const timeMax = new Date(now + CFG.daysAhead * 864e5).toISOString();
 
+  // Everything is mirrored; the dashboard decides what to show. That makes
+  // toggling a calendar on or off instant instead of a 15-minute wait.
   const batches = await Promise.all(
-    CFG.calendars.map((id, i) =>
-      fetchCalendar(id, token, CFG.tones[i] || CFG.tones[0] || 'cool', timeMin, timeMax))
+    cals.map(c => fetchCalendar(c, token, timeMin, timeMax))
   );
 
   const all = batches.flat();
@@ -436,7 +467,7 @@ async function serviceAccountToken(){
    4. Write the mirror
    ══════════════════════════════════════════════════════════════ */
 
-async function writeMirror(events){
+async function writeMirror(events, cals){
   const authQuery = await firebaseAuthQuery();
   const base = `${CFG.databaseUrl}/households/${CFG.householdId}`;
 
@@ -452,6 +483,10 @@ async function writeMirror(events){
     });
     if (!res.ok){
       const text = await res.text().catch(() => '');
+      if (res.status === 404){
+        console.error('\n' + explainDatabase404());
+        throw new Error('database not found at that URL');
+      }
       if (res.status === 401 || res.status === 403){
         throw new Error(
           `Firebase rejected the write to ${path} (${res.status}).\n` +
@@ -465,6 +500,12 @@ async function writeMirror(events){
   };
 
   await put('gcal', payload);
+
+  // What the settings panel lists as available to switch on and off.
+  const catalog = {};
+  for (const c of cals) catalog[c.key] = { id: c.id, name: c.name, primary: c.primary };
+  await put('meta/calendars', catalog);
+
   await put('meta/calendarSync', {
     at: Date.now(),
     count: events.length,
@@ -473,6 +514,29 @@ async function writeMirror(events){
 }
 
 
+function explainDatabase404(){
+  return (
+    'The Realtime Database URL returned 404, which means no database exists\n' +
+    'at that address. The service account authenticated fine, so the project\n' +
+    'is real — this is specifically the database.\n' +
+    '\nUsing: ' + CFG.databaseUrl + '\n' +
+    '\nTwo likely causes:\n' +
+    '\n  1. No Realtime Database has been created yet. Firebase Console →\n' +
+    '     Build → Realtime Database. If it shows a "Create Database" button,\n' +
+    '     that is the problem. Note this is a DIFFERENT product from Cloud\n' +
+    '     Firestore — the console pushes Firestore first, and creating one\n' +
+    '     does not create the other. This project needs Realtime Database.\n' +
+    '\n  2. The URL is right in shape but wrong in region. Databases outside\n' +
+    '     us-central1 live on a different host:\n' +
+    '       us-central1   https://<project>-default-rtdb.firebaseio.com\n' +
+    '       other regions https://<project>-default-rtdb.<region>.firebasedatabase.app\n' +
+    '\n     Copy the exact URL from the top of the Realtime Database data\n' +
+    '     viewer in the console and paste it into FIREBASE_DATABASE_URL.\n' +
+    '\nAn existing but empty database returns null, not 404 — so this is not\n' +
+    'a "nothing has signed in yet" situation.'
+  );
+}
+
 /* Answers "what do I put in FIREBASE_HOUSEHOLD_ID" without a hunt
    through the Firebase console. */
 async function listHouseholds(){
@@ -480,6 +544,10 @@ async function listHouseholds(){
   const res = await fetch(`${CFG.databaseUrl}/households.json?shallow=true&${authQuery}`);
 
   if (!res.ok){
+    if (res.status === 404){
+      console.error('\n' + explainDatabase404());
+      throw new Error('database not found at that URL');
+    }
     const text = await res.text().catch(() => '');
     throw new Error(`Could not read the database (${res.status}): ${text.slice(0, 200)}`);
   }
@@ -546,16 +614,21 @@ async function main(){
     return;
   }
 
-  const events = await fetchAllEvents(token);
+  const cals = await getCalendarList(token);
+  log(`Found ${cals.length} calendar${cals.length === 1 ? '' : 's'}: ${cals.map(c => c.name).join(', ')}`);
 
-  console.log(`Fetched ${events.length} events.`);
-
-  if (events.length < 3 && CFG.calendars.length === 1 && CFG.calendars[0] === 'primary'){
+  if (process.env.CALENDAR_IDS){
     console.log(
-      '\nThat is a thin result for a primary calendar. If your real schedule\n' +
-      'lives on another calendar or another Google account, run:\n' +
-      '  node scripts/sync-calendar.mjs --list-calendars');
+      'Note: CALENDAR_IDS is set but no longer selects calendars. All of them\n' +
+      '      are mirrored now, and which ones appear is chosen in the dashboard\n' +
+      '      settings panel. You can remove that variable.');
   }
+
+  const events = await fetchAllEvents(token, cals);
+
+  console.log(`Fetched ${events.length} events across ${cals.length} calendars.`);
+
+
 
   if (DRY){
     // The point of a dry run is seeing your real events, so print them.
@@ -564,19 +637,21 @@ async function main(){
     for (const date of Object.keys(byDate).sort()){
       console.log(`\n  ${date}`);
       for (const e of byDate[date]){
-        console.log(`    ${(e.time || 'all day').padEnd(8)} ${e.title}`);
+        const from = cals.find(c => c.key === e.cal);
+        console.log(`    ${(e.time || 'all day').padEnd(8)} ${e.title}` +
+          (from && !from.primary ? `   [${from.name}]` : ''));
       }
     }
     console.log('\nDry run — nothing was written to Firebase.');
     return;
   }
 
-  await writeMirror(events);
+  await writeMirror(events, cals);
   console.log(`Mirrored to households/${CFG.householdId}/gcal at ${new Date().toISOString()}.`);
 }
 
 main().catch(err => {
-  if (err.message !== 'missing configuration')
+  if (err.message !== 'missing configuration' && err.message !== 'database not found at that URL')
     console.error('\nSync failed: ' + err.message);
   // Setting exitCode rather than calling process.exit() avoids a libuv
   // assertion crash on Windows when a fetch socket is still closing.

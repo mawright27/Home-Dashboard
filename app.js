@@ -39,8 +39,29 @@ const ui = {
    Small helpers
    ══════════════════════════════════════════════════════════════ */
 
+/* Which Google calendars are showing, and in what color. Both are read
+   at render time rather than baked into the mirror, so a toggle takes
+   effect immediately instead of waiting for the next sync. */
+function calendarPrefs(){ return ui.data.settings?.calendars || {}; }
+
+function calendarOn(key){
+  const pref = calendarPrefs()[key];
+  if (pref) return pref.on !== false;
+  // Nothing chosen yet: show the primary calendar, leave the rest off so a
+  // holidays feed can't bury a real schedule on first run.
+  return Boolean(ui.data.meta?.calendars?.[key]?.primary);
+}
+
+const calendarTone = (key, fallback) =>
+  calendarPrefs()[key]?.tone || fallback || 'cool';
+
 // Manual entries plus whatever the last Google Calendar sync mirrored.
-const allEvents = () => [...(ui.data.events || []), ...(ui.data.gcal || [])];
+const allEvents = () => [
+  ...(ui.data.events || []),
+  ...(ui.data.gcal || [])
+    .filter(e => !e.cal || calendarOn(e.cal))
+    .map(e => e.cal ? { ...e, tone: calendarTone(e.cal, e.tone) } : e)
+];
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -451,6 +472,11 @@ function settingsModal(){
   let pending = { lat: s.lat, lon: s.lon, place: s.place };
   const manualCount = (ui.data.events || []).length;
 
+  const calList = Object.entries(ui.data.meta?.calendars || {})
+    .map(([key, c]) => ({ key, ...c }))
+    .sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0) ||
+                    String(a.name).localeCompare(String(b.name)));
+
   openModal('Settings', `
     <div class="field">
       <label class="field__label" for="stPlace">Location</label>
@@ -483,6 +509,31 @@ function settingsModal(){
         <input type="number" min="1" max="6" id="stEvents" value="${s.maxEventsPerDay}">
       </div>
     </div>
+
+    ${calList.length ? `
+      <div class="divider"></div>
+      <div class="field">
+        <label class="field__label">Google calendars</label>
+        <div class="cals" id="stCals">
+          ${calList.map(c => `
+            <label class="cal-row">
+              <input type="checkbox" class="cal-row__on" data-key="${esc(c.key)}"
+                     ${calendarOn(c.key) ? 'checked' : ''}>
+              <span class="cal-row__name">${esc(c.name)}${c.primary ? ' <span class="cal-row__tag">main</span>' : ''}</span>
+              <select class="cal-row__tone" data-key="${esc(c.key)}">
+                <option value="cool"${calendarTone(c.key) === 'cool' ? ' selected' : ''}>Cyan</option>
+                <option value="warm"${calendarTone(c.key) === 'warm' ? ' selected' : ''}>Amber</option>
+                <option value="plain"${calendarTone(c.key) === 'plain' ? ' selected' : ''}>Grey</option>
+              </select>
+            </label>`).join('')}
+        </div>
+        <p class="note">Unchecking hides a calendar here without touching it in Google.</p>
+      </div>` : `
+      <div class="divider"></div>
+      <p class="note">
+        No Google calendars discovered yet. They appear here after the next sync
+        &mdash; run <code>node scripts/sync-calendar.mjs</code> or let the GitHub Action fire.
+      </p>`}
 
     ${manualCount ? `
       <div class="divider"></div>
@@ -575,13 +626,21 @@ function settingsModal(){
         } catch { /* keep the previous coordinates */ }
       }
 
+      const calendars = {};
+      body.querySelectorAll('.cal-row__on').forEach(cb => {
+        const key = cb.dataset.key;
+        const tone = body.querySelector(`.cal-row__tone[data-key="${key}"]`)?.value || 'cool';
+        calendars[key] = { on: cb.checked, tone };
+      });
+
       await ui.store.saveSettings({
         place: typed,
         lat:   pending.lat,
         lon:   pending.lon,
         units: $('stUnits').value,
         weekStartsOn:    parseInt($('stWeek').value, 10),
-        maxEventsPerDay: parseInt($('stEvents').value, 10)
+        maxEventsPerDay: parseInt($('stEvents').value, 10),
+        ...(calList.length ? { calendars } : {})
       });
 
       closeModal();
@@ -1016,6 +1075,7 @@ async function gatePair(){
         click your account chip, and enter this code. This screen will take over on its own —
         you won't need to touch it again.
       </p>
+      <p class="gate__msg" style="font-size:14px">This display: ${esc(location.host)}</p>
     `);
     watchHousehold(deviceUid, async hid => {
       auth.householdId = hid;

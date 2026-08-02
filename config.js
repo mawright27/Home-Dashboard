@@ -66,7 +66,7 @@ export const CALENDAR = {
   ],
 
   daysBack:    7,      // how far back to mirror
-  daysAhead:   35,     // must cover the 4-week grid
+  daysAhead:   45,     // 4-week grid plus headroom for holidays
   syncEveryMs: 10 * 60 * 1000
 };
 
@@ -97,7 +97,7 @@ export const DEFAULTS = {
   units:           'F',            // 'F' | 'C'
   weekStartsOn:    0,              // 0 Sunday, 1 Monday
   weeks:           4,
-  maxEventsPerDay: 3,
+  maxEventsPerDay: 4,
   maxGroceryItems: 16,
   dayStartHour:    5,
   dayEndHour:      23,

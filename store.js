@@ -584,7 +584,28 @@ export async function signOutNow(){
 /* ── Display side: sign in anonymously and publish a pairing code ── */
 export async function startPairing(){
   const fb = await loadFirebase();
-  if (!fb.auth.currentUser) await fb.A.signInAnonymously(fb.auth);
+
+  if (!fb.auth.currentUser){
+    try {
+      await fb.A.signInAnonymously(fb.auth);
+    } catch (err){
+      if (err.code === 'auth/operation-not-allowed'){
+        throw new Error(
+          'Anonymous sign-in is turned off for this Firebase project.\n\n' +
+          'A keyboard-less display uses it to identify itself before you pair it.\n\n' +
+          'Firebase Console \u2192 Authentication \u2192 Sign-in method \u2192 Anonymous \u2192 Enable.'
+        );
+      }
+      if (err.code === 'auth/unauthorized-domain'){
+        throw new Error(
+          `This address (${location.hostname}) is not authorized for sign-in.\n\n` +
+          'Firebase Console \u2192 Authentication \u2192 Settings \u2192 Authorized domains \u2192 Add domain.'
+        );
+      }
+      throw err;
+    }
+  }
+
   const deviceUid = fb.auth.currentUser.uid;
 
   const code = randomCode();
